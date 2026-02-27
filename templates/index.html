@@ -1,701 +1,374 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clownfish Egg Counter</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --deep-ocean: #0a1628;
-            --ocean-mid: #0f2847;
-            --ocean-surface: #183b68;
-            --coral: #ff6b35;
-            --coral-light: #ff8c5a;
-            --coral-glow: rgba(255, 107, 53, 0.15);
-            --foam: #e8f0f8;
-            --white: #ffffff;
-            --sand: #f5e6d0;
-            --text-primary: #e2ecf5;
-            --text-secondary: #8ba4be;
-            --glass: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.08);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clownfish Egg Counter</title>
+<meta name="description" content="Count clownfish eggs instantly using computer vision. Upload a photo, get a count — entirely in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+:root{
+  --bg:#faf9f7;
+  --surface:#ffffff;
+  --surface-2:#f5f3f0;
+  --border:#eae7e2;
+  --border-focus:#d4d0c9;
+  --ink:#1a1816;
+  --ink-2:#5c5650;
+  --ink-3:#9c9590;
+  --ink-4:#bfb9b2;
+  --coral:#e05a24;
+  --coral-dim:#f2ddd0;
+  --coral-wash:#fdf5f0;
+  --serif:'Instrument Serif', Georgia, serif;
+  --sans:'DM Sans', system-ui, -apple-system, sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
 
-        body {
-            font-family: 'Outfit', sans-serif;
-            background: var(--deep-ocean);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh}
 
-        /* Animated ocean background */
-        .ocean-bg {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            overflow: hidden;
-        }
-        .ocean-bg::before {
-            content: '';
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            top: -50%;
-            left: -50%;
-            background: 
-                radial-gradient(ellipse at 20% 50%, rgba(15, 40, 71, 0.8) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 20%, rgba(255, 107, 53, 0.05) 0%, transparent 40%),
-                radial-gradient(ellipse at 60% 80%, rgba(24, 59, 104, 0.6) 0%, transparent 50%);
-            animation: drift 20s ease-in-out infinite alternate;
-        }
-        @keyframes drift {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(-2%, 1%) rotate(1deg); }
-        }
+/* ─── Layout ─── */
+.page{max-width:660px;margin:0 auto;padding:72px 24px 120px}
+@media(max-width:480px){.page{padding:48px 16px 80px}}
 
-        /* Bubbles */
-        .bubble {
-            position: fixed;
-            border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-            border: 1px solid rgba(255,255,255,0.04);
-            z-index: 0;
-            animation: rise linear infinite;
-        }
-        @keyframes rise {
-            0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
-        }
+/* ─── Header ─── */
+.head{text-align:center;margin-bottom:48px}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:.73rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--coral);background:var(--coral-wash);
+  padding:6px 14px;border-radius:99px;margin-bottom:20px;
+}
+.chip svg{width:14px;height:14px}
+h1{font-family:var(--serif);font-size:clamp(2.2rem,6vw,3rem);font-weight:400;line-height:1.1;letter-spacing:-.02em;margin-bottom:10px}
+.lead{font-size:.95rem;color:var(--ink-2);line-height:1.6;max-width:440px;margin:0 auto}
 
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 40px 24px 80px;
-        }
+/* ─── Notice ─── */
+.notice{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:14px 16px;margin-bottom:32px;
+  background:var(--coral-wash);border-radius:10px;
+  font-size:.82rem;color:var(--ink-2);line-height:1.55;
+}
+.notice svg{flex-shrink:0;width:18px;height:18px;color:var(--coral);margin-top:1px}
 
-        /* Header */
-        header {
-            text-align: center;
-            margin-bottom: 48px;
-        }
-        .logo-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 72px;
-            height: 72px;
-            border-radius: 20px;
-            background: linear-gradient(135deg, var(--coral), #ff4500);
-            margin-bottom: 24px;
-            font-size: 36px;
-            box-shadow: 0 8px 32px rgba(255, 107, 53, 0.3);
-            animation: float 3s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
-        }
-        h1 {
-            font-family: 'DM Serif Display', serif;
-            font-size: clamp(2rem, 5vw, 3.2rem);
-            color: var(--white);
-            letter-spacing: -0.02em;
-            line-height: 1.1;
-            margin-bottom: 12px;
-        }
-        h1 span { color: var(--coral); }
-        .subtitle {
-            font-size: 1.05rem;
-            color: var(--text-secondary);
-            font-weight: 300;
-            max-width: 520px;
-            margin: 0 auto;
-            line-height: 1.6;
-        }
+/* ─── Card ─── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color .2s var(--ease)}
 
-        /* Disclaimer banner */
-        .disclaimer {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-left: 3px solid var(--coral);
-            border-radius: 12px;
-            padding: 16px 20px;
-            margin-bottom: 36px;
-            backdrop-filter: blur(10px);
-        }
-        .disclaimer-title {
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: var(--coral-light);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 4px;
-        }
-        .disclaimer p {
-            font-size: 0.88rem;
-            color: var(--text-secondary);
-            line-height: 1.55;
-        }
+/* ─── Upload zone ─── */
+.zone{padding:56px 32px;text-align:center;cursor:pointer;position:relative;transition:background .2s var(--ease)}
+.zone:hover{background:var(--surface-2)}
+.zone.over{background:var(--coral-wash)}
+.zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.zone-ring{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:56px;height:56px;border-radius:16px;
+  background:var(--surface-2);border:1px solid var(--border);
+  margin-bottom:16px;transition:border-color .2s var(--ease),background .2s var(--ease);
+}
+.zone:hover .zone-ring{border-color:var(--border-focus);background:var(--bg)}
+.zone-ring svg{width:24px;height:24px;color:var(--ink-3);transition:color .2s var(--ease)}
+.zone:hover .zone-ring svg{color:var(--ink-2)}
+.zone-t{font-size:.92rem;font-weight:500;color:var(--ink);margin-bottom:3px}
+.zone-h{font-size:.8rem;color:var(--ink-4)}
 
-        /* Upload area */
-        .upload-section {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 48px;
-            text-align: center;
-            backdrop-filter: blur(12px);
-            transition: all 0.3s ease;
-            margin-bottom: 40px;
-        }
-        .upload-section:hover {
-            border-color: rgba(255, 107, 53, 0.2);
-            box-shadow: 0 0 60px rgba(255, 107, 53, 0.05);
-        }
+/* ─── File bar ─── */
+.fbar{display:none;align-items:center;gap:12px;padding:14px 18px;border-top:1px solid var(--border)}
+.fbar.on{display:flex}
+.fbar img{width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border)}
+.fbar-info{flex:1;min-width:0}
+.fbar-name{font-size:.84rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fbar-size{font-size:.74rem;color:var(--ink-4)}
+.fbar-x{
+  display:flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:6px;
+  background:none;border:none;cursor:pointer;
+  color:var(--ink-4);transition:background .15s,color .15s;
+}
+.fbar-x:hover{background:var(--surface-2);color:var(--ink-2)}
+.fbar-x svg{width:14px;height:14px}
 
-        .dropzone {
-            border: 2px dashed rgba(255,255,255,0.12);
-            border-radius: 16px;
-            padding: 48px 24px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        .dropzone:hover, .dropzone.dragover {
-            border-color: var(--coral);
-            background: var(--coral-glow);
-        }
-        .dropzone-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            display: block;
-        }
-        .dropzone-text {
-            font-size: 1.1rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-        .dropzone-hint {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-        .dropzone input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
+/* ─── Go button ─── */
+.go-bar{display:none;padding:14px 18px;border-top:1px solid var(--border)}
+.go-bar.on{display:block}
+.go{
+  width:100%;padding:12px;border:none;border-radius:10px;
+  font-family:var(--sans);font-size:.9rem;font-weight:600;
+  color:#fff;background:var(--coral);cursor:pointer;
+  transition:opacity .15s var(--ease),transform .1s var(--ease);
+}
+.go:hover:not(:disabled){opacity:.9}
+.go:active:not(:disabled){transform:scale(.99)}
+.go:disabled{opacity:.35;cursor:default}
 
-        /* Preview */
-        .preview-container {
-            margin-top: 24px;
-            display: none;
-        }
-        .preview-container.active { display: block; }
-        .preview-img {
-            max-width: 100%;
-            max-height: 280px;
-            border-radius: 12px;
-            object-fit: contain;
-            border: 1px solid var(--glass-border);
-        }
-        .preview-name {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            margin-top: 8px;
-        }
+/* ─── Processing ─── */
+.proc{display:none;padding:56px 32px;text-align:center}
+.proc.on{display:block}
+.proc-bar{width:180px;height:3px;background:var(--border);border-radius:3px;margin:0 auto 18px;overflow:hidden}
+.proc-fill{height:100%;width:30%;background:var(--coral);border-radius:3px;animation:slide 1s var(--ease) infinite}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(700%)}}
+.proc-t{font-size:.88rem;color:var(--ink-2)}
+.proc-s{font-size:.76rem;color:var(--ink-4);margin-top:4px}
 
-        /* Analyze button */
-        .btn-analyze {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 24px;
-            padding: 14px 36px;
-            background: linear-gradient(135deg, var(--coral), #e55a2b);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.05rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
-        }
-        .btn-analyze:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(255, 107, 53, 0.4);
-        }
-        .btn-analyze:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+/* ─── Results ─── */
+.out{display:none;opacity:0;transform:translateY(8px);transition:opacity .4s var(--ease),transform .4s var(--ease)}
+.out.on{display:block}
+.out.vis{opacity:1;transform:translateY(0)}
 
-        /* Loading */
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(10, 22, 40, 0.85);
-            backdrop-filter: blur(8px);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 24px;
-        }
-        .loading-overlay.active { display: flex; }
-        .spinner {
-            width: 56px;
-            height: 56px;
-            border: 3px solid rgba(255,255,255,0.1);
-            border-top-color: var(--coral);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-text {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-        }
+.hero{text-align:center;padding:44px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:16px}
+.hero-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-4);font-weight:600;margin-bottom:6px}
+.hero-num{font-family:var(--serif);font-size:clamp(3.5rem,12vw,5.5rem);line-height:1;color:var(--coral);letter-spacing:-.03em}
+.hero-unit{font-size:.88rem;color:var(--ink-3);margin-top:4px}
 
-        /* Results */
-        .results-section {
-            display: none;
-            animation: fadeUp 0.6s ease;
-        }
-        .results-section.active { display: block; }
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+/* ─── Tabs ─── */
+.tcard{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px}
+.trow{display:flex;border-bottom:1px solid var(--border)}
+.tbtn{
+  flex:1;padding:12px 4px;background:none;border:none;
+  font-family:var(--sans);font-size:.8rem;font-weight:500;
+  color:var(--ink-4);cursor:pointer;position:relative;
+  transition:color .2s var(--ease);
+}
+.tbtn:hover{color:var(--ink-2)}
+.tbtn::after{content:'';position:absolute;bottom:-1px;left:20%;right:20%;height:2px;background:var(--coral);border-radius:2px;transform:scaleX(0);transition:transform .2s var(--ease)}
+.tbtn.on{color:var(--coral)}
+.tbtn.on::after{transform:scaleX(1)}
+.tpanel{display:none;padding:10px}
+.tpanel.on{display:block}
+.tpanel canvas{width:100%;border-radius:10px;display:block}
+.tpanel p{font-size:.74rem;color:var(--ink-4);padding:8px 2px 2px}
 
-        .count-hero {
-            text-align: center;
-            padding: 48px 24px;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            margin-bottom: 32px;
-            backdrop-filter: blur(12px);
-            position: relative;
-            overflow: hidden;
-        }
-        .count-hero::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, var(--coral-glow), transparent 60%);
-            pointer-events: none;
-        }
-        .count-label {
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            position: relative;
-        }
-        .count-number {
-            font-family: 'DM Serif Display', serif;
-            font-size: clamp(4rem, 10vw, 7rem);
-            color: var(--coral);
-            line-height: 1;
-            position: relative;
-            text-shadow: 0 0 60px rgba(255, 107, 53, 0.3);
-        }
-        .count-suffix {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.2rem;
-            font-weight: 400;
-            color: var(--text-secondary);
-            margin-top: 8px;
-            position: relative;
-        }
+.back-row{text-align:center;margin-top:10px}
+.back{
+  background:none;border:1px solid var(--border);border-radius:10px;
+  padding:10px 24px;font-family:var(--sans);font-size:.85rem;font-weight:500;
+  color:var(--ink-2);cursor:pointer;transition:all .15s var(--ease);
+}
+.back:hover{border-color:var(--border-focus);color:var(--ink)}
 
-        /* Image results grid */
-        .results-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }
-        @media (min-width: 700px) {
-            .results-grid { grid-template-columns: 1fr 1fr; }
-            .results-grid .result-card:first-child { grid-column: 1 / -1; }
-        }
+/* ─── Method ─── */
+.method{margin-top:44px}
+.method summary{
+  font-family:var(--serif);font-size:1.1rem;cursor:pointer;
+  list-style:none;display:flex;align-items:center;gap:8px;
+  color:var(--ink);padding:0 2px;
+}
+.method summary::-webkit-details-marker{display:none}
+.method summary svg{width:16px;height:16px;color:var(--ink-3);transition:transform .2s var(--ease)}
+.method[open] summary svg{transform:rotate(180deg)}
+.method-body{
+  margin-top:16px;padding:22px;
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+}
+.st{display:flex;gap:10px;padding:8px 0}
+.st:first-child{padding-top:0}
+.st:last-child{padding-bottom:0}
+.st+.st{border-top:1px solid var(--border)}
+.st-n{
+  flex-shrink:0;width:22px;height:22px;border-radius:7px;
+  background:var(--coral-wash);color:var(--coral);
+  font-size:.68rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;margin-top:2px;
+}
+.st p{font-size:.84rem;color:var(--ink-2);line-height:1.55}
+.st strong{color:var(--ink);font-weight:500}
 
-        .result-card {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            overflow: hidden;
-            backdrop-filter: blur(10px);
-            transition: transform 0.2s ease;
-        }
-        .result-card:hover { transform: translateY(-2px); }
-        .result-card-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .result-card-icon { font-size: 1.2rem; }
-        .result-card-title {
-            font-weight: 600;
-            font-size: 0.92rem;
-        }
-        .result-card-desc {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-        .result-card-body {
-            padding: 16px;
-        }
-        .result-card-body img {
-            width: 100%;
-            border-radius: 8px;
-            display: block;
-        }
+footer{text-align:center;margin-top:52px;font-size:.74rem;color:var(--ink-4);line-height:1.7}
 
-        /* Reset button */
-        .btn-reset {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 32px;
-            padding: 12px 28px;
-            background: transparent;
-            color: var(--text-secondary);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px;
-            font-family: 'Outfit', sans-serif;
-            font-size: 0.95rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .btn-reset:hover {
-            color: var(--text-primary);
-            border-color: rgba(255,255,255,0.2);
-            background: var(--glass);
-        }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            margin-top: 60px;
-            padding: 24px;
-            color: var(--text-secondary);
-            font-size: 0.82rem;
-        }
-        footer a { color: var(--coral-light); text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
-
-        /* Method section */
-        .method-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            cursor: pointer;
-            margin-top: 16px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            font-family: 'Outfit', sans-serif;
-            transition: all 0.2s;
-        }
-        .method-toggle:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
-        .method-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease;
-        }
-        .method-content.open { max-height: 600px; }
-        .method-inner {
-            padding: 20px;
-            margin-top: 16px;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            font-size: 0.88rem;
-            color: var(--text-secondary);
-            line-height: 1.65;
-        }
-        .method-inner strong { color: var(--text-primary); font-weight: 600; }
-        .step-list {
-            list-style: none;
-            padding: 0;
-            margin-top: 12px;
-        }
-        .step-list li {
-            padding: 6px 0 6px 28px;
-            position: relative;
-        }
-        .step-list li::before {
-            content: attr(data-step);
-            position: absolute;
-            left: 0;
-            top: 6px;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: var(--coral-glow);
-            color: var(--coral);
-            font-size: 0.7rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(255,107,53,0.3);
-        }
-    </style>
+.cv-msg{text-align:center;padding:8px;font-size:.76rem;color:var(--ink-4);display:none}
+.cv-msg.on{display:block}
+</style>
 </head>
 <body>
-    <div class="ocean-bg"></div>
+<div class="page">
 
-    <!-- Bubbles -->
-    <script>
-        for (let i = 0; i < 12; i++) {
-            const b = document.createElement('div');
-            b.className = 'bubble';
-            const size = 20 + Math.random() * 60;
-            b.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*10}s;`;
-            document.body.appendChild(b);
-        }
-    </script>
-
-    <div class="container">
-        <header>
-            <div class="logo-icon">🐟</div>
-            <h1>Clownfish <span>Egg</span> Counter</h1>
-            <p class="subtitle">Upload a photo of clownfish eggs and get an automated count using computer vision</p>
-        </header>
-
-        <div class="disclaimer">
-            <div class="disclaimer-title">⚠️ Accuracy Notice</div>
-            <p>This tool uses classical computer vision (bandpass filtering + local maxima detection) — <strong>not</strong> a trained CNN or deep learning model. Results are estimates from a single image and may have errors, especially in very dense clusters or poor lighting. For research purposes, always verify counts manually.</p>
-        </div>
-
-        <!-- Upload -->
-        <div class="upload-section" id="uploadSection">
-            <div class="dropzone" id="dropzone">
-                <span class="dropzone-icon">📷</span>
-                <div class="dropzone-text">Drop your egg image here</div>
-                <div class="dropzone-hint">or click to browse · JPG, PNG up to 16MB</div>
-                <input type="file" id="fileInput" accept="image/*">
-            </div>
-            <div class="preview-container" id="preview">
-                <img class="preview-img" id="previewImg" alt="Preview">
-                <div class="preview-name" id="previewName"></div>
-            </div>
-            <button class="btn-analyze" id="analyzeBtn" disabled>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                Count Eggs
-            </button>
-
-            <br>
-            <button class="method-toggle" onclick="document.getElementById('methodContent').classList.toggle('open'); this.querySelector('.arrow').textContent = document.getElementById('methodContent').classList.contains('open') ? '▲' : '▼'">
-                How does it work? <span class="arrow">▼</span>
-            </button>
-            <div class="method-content" id="methodContent">
-                <div class="method-inner">
-                    <strong>Pipeline overview:</strong>
-                    <ul class="step-list">
-                        <li data-step="1"><strong>Color filter</strong> — HSV thresholding isolates orange egg pixels from the background</li>
-                        <li data-step="2"><strong>Bandpass filter</strong> — Subtracts a wide Gaussian blur from a narrow one on the LAB A-channel, highlighting egg-sized features even in dense clusters</li>
-                        <li data-step="3"><strong>Peak detection</strong> — Non-maximum suppression finds one intensity peak per egg center</li>
-                        <li data-step="4"><strong>Validation</strong> — Each detection is verified for saturation and color to reject false positives on tile gaps</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- Loading -->
-        <div class="loading-overlay" id="loading">
-            <div class="spinner"></div>
-            <div class="loading-text">Analyzing eggs...</div>
-        </div>
-
-        <!-- Results -->
-        <div class="results-section" id="results">
-            <div class="count-hero">
-                <div class="count-label">Estimated Egg Count</div>
-                <div class="count-number" id="eggCount">0</div>
-                <div class="count-suffix">eggs detected</div>
-            </div>
-
-            <div class="results-grid">
-                <div class="result-card">
-                    <div class="result-card-header">
-                        <span class="result-card-icon">🎯</span>
-                        <div>
-                            <div class="result-card-title">Detection Overlay</div>
-                            <div class="result-card-desc">Green dots mark each detected egg center</div>
-                        </div>
-                    </div>
-                    <div class="result-card-body">
-                        <img id="overlayImg" alt="Detection overlay">
-                    </div>
-                </div>
-                <div class="result-card">
-                    <div class="result-card-header">
-                        <span class="result-card-icon">📊</span>
-                        <div>
-                            <div class="result-card-title">Bandpass Filter</div>
-                            <div class="result-card-desc">Egg-sized features isolated from background</div>
-                        </div>
-                    </div>
-                    <div class="result-card-body">
-                        <img id="bandpassImg" alt="Bandpass filter">
-                    </div>
-                </div>
-                <div class="result-card">
-                    <div class="result-card-header">
-                        <span class="result-card-icon">🎨</span>
-                        <div>
-                            <div class="result-card-title">Orange Mask</div>
-                            <div class="result-card-desc">HSV color segmentation of egg pixels</div>
-                        </div>
-                    </div>
-                    <div class="result-card-body">
-                        <img id="maskImg" alt="Orange mask">
-                    </div>
-                </div>
-            </div>
-
-            <div style="text-align:center">
-                <button class="btn-reset" id="resetBtn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                    Analyze Another Image
-                </button>
-            </div>
-        </div>
-
-        <footer>
-            Built with OpenCV + scipy · Classical CV, no deep learning<br>
-            <a href="https://github.com" target="_blank">View source</a> · For educational and research use
-        </footer>
+  <header class="head">
+    <div class="chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12c2-4 6-7 10-7s8 3 10 7c-2 4-6 7-10 7s-8-3-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      Computer Vision
     </div>
+    <h1>Clownfish Egg Counter</h1>
+    <p class="lead">Upload a photo of clownfish eggs and get an instant count — processed entirely in your browser.</p>
+  </header>
 
-    <script>
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('fileInput');
-        const preview = document.getElementById('preview');
-        const previewImg = document.getElementById('previewImg');
-        const previewName = document.getElementById('previewName');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const loading = document.getElementById('loading');
-        const uploadSection = document.getElementById('uploadSection');
-        const results = document.getElementById('results');
-        const resetBtn = document.getElementById('resetBtn');
+  <div class="notice">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+    <div>This tool uses <strong>classical computer vision</strong> (bandpass filtering), not a trained deep learning model. Counts are estimates from a single image and may have errors in dense clusters or poor lighting.</div>
+  </div>
 
-        let selectedFile = null;
+  <!-- Upload -->
+  <div class="card" id="uCard">
+    <div class="zone" id="zone">
+      <div class="zone-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="zone-t">Drop your image here or click to browse</div>
+      <div class="zone-h">JPG or PNG</div>
+      <input type="file" id="fin" accept="image/*">
+    </div>
+    <div class="fbar" id="fbar">
+      <img id="thumb">
+      <div class="fbar-info"><div class="fbar-name" id="fname"></div><div class="fbar-size" id="fsize"></div></div>
+      <button class="fbar-x" id="xbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="go-bar" id="goBar"><button class="go" id="goBtn" disabled>Count Eggs</button></div>
+    <div class="proc" id="proc"><div class="proc-bar"><div class="proc-fill"></div></div><div class="proc-t">Analyzing image…</div><div class="proc-s">All processing happens locally in your browser</div></div>
+  </div>
+  <div class="cv-msg" id="cvMsg">Loading OpenCV.js…</div>
 
-        // Drag & drop
-        dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
-        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-        dropzone.addEventListener('drop', e => {
-            e.preventDefault();
-            dropzone.classList.remove('dragover');
-            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-        });
+  <!-- Results -->
+  <div class="out" id="out">
+    <div class="hero">
+      <div class="hero-label">Estimated Count</div>
+      <div class="hero-num" id="num">0</div>
+      <div class="hero-unit">eggs detected</div>
+    </div>
+    <div class="tcard">
+      <div class="trow">
+        <button class="tbtn on" data-t="ov">Detection</button>
+        <button class="tbtn" data-t="bp">Bandpass</button>
+        <button class="tbtn" data-t="mk">Mask</button>
+      </div>
+      <div class="tpanel on" id="t-ov"><canvas id="cOv"></canvas><p>Green dot on each detected egg center</p></div>
+      <div class="tpanel" id="t-bp"><canvas id="cBp"></canvas><p>Difference-of-Gaussians isolates egg-sized features</p></div>
+      <div class="tpanel" id="t-mk"><canvas id="cMk"></canvas><p>HSV color segmentation of orange egg pixels</p></div>
+    </div>
+    <div class="back-row"><button class="back" id="again">Try another image</button></div>
+  </div>
 
-        fileInput.addEventListener('change', e => {
-            if (e.target.files.length) handleFile(e.target.files[0]);
-        });
+  <!-- Method -->
+  <details class="method">
+    <summary>How it works <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></summary>
+    <div class="method-body">
+      <div class="st"><div class="st-n">1</div><p><strong>Color filter</strong> — HSV thresholding isolates orange egg pixels from the tile background</p></div>
+      <div class="st"><div class="st-n">2</div><p><strong>Bandpass filter</strong> — Difference of Gaussians on the LAB A-channel highlights individual egg-sized features, even in dense clusters</p></div>
+      <div class="st"><div class="st-n">3</div><p><strong>Peak detection</strong> — Non-maximum suppression finds one intensity peak per egg center</p></div>
+      <div class="st"><div class="st-n">4</div><p><strong>Validation</strong> — Saturation and color checks at each candidate reject false positives on tile gaps</p></div>
+    </div>
+  </details>
 
-        function handleFile(file) {
-            if (!file.type.startsWith('image/')) return;
-            selectedFile = file;
-            const reader = new FileReader();
-            reader.onload = e => {
-                previewImg.src = e.target.result;
-                previewName.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
-                preview.classList.add('active');
-                analyzeBtn.disabled = false;
-            };
-            reader.readAsDataURL(file);
-        }
+  <footer>Runs 100% in your browser · No images uploaded to any server<br>Built with OpenCV.js · Classical computer vision</footer>
+</div>
 
-        analyzeBtn.addEventListener('click', async () => {
-            if (!selectedFile) return;
-            loading.classList.add('active');
+<script>
+let file = null;
+const $ = (id) => document.getElementById(id);
 
-            const formData = new FormData();
-            formData.append('image', selectedFile);
+/* ── UI ── */
+const zone = $('zone'), fin = $('fin'), fb = $('fbar'), gb = $('goBar');
 
-            try {
-                const res = await fetch('/analyze', { method: 'POST', body: formData });
-                const data = await res.json();
+zone.ondragover = e => { e.preventDefault(); zone.classList.add('over') };
+zone.ondragleave = () => zone.classList.remove('over');
+zone.ondrop = e => { e.preventDefault(); zone.classList.remove('over'); e.dataTransfer.files[0] && pick(e.dataTransfer.files[0]) };
+fin.onchange = e => e.target.files[0] && pick(e.target.files[0]);
+$('xbtn').onclick = clear;
+$('again').onclick = () => { $('out').classList.remove('on','vis'); $('uCard').style.display=''; clear(); };
+$('goBtn').onclick = run;
 
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                    return;
-                }
+document.querySelectorAll('.tbtn').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tbtn').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.tpanel').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); $('t-' + b.dataset.t).classList.add('on');
+});
 
-                // Animate count
-                const countEl = document.getElementById('eggCount');
-                animateCount(countEl, data.count);
+function pick(f){
+  if(!f.type.startsWith('image/')) return;
+  file = f;
+  const r = new FileReader();
+  r.onload = e => {
+    $('thumb').src = e.target.result;
+    $('fname').textContent = f.name;
+    $('fsize').textContent = (f.size/1048576).toFixed(1) + ' MB';
+    fb.classList.add('on'); gb.classList.add('on'); zone.style.display='none';
+    $('goBtn').disabled = false;
+  };
+  r.readAsDataURL(f);
+}
+function clear(){
+  file=null; fin.value='';
+  fb.classList.remove('on'); gb.classList.remove('on');
+  zone.style.display='';
+  $('proc').classList.remove('on');
+  $('goBtn').disabled = true;
+}
 
-                // Set images
-                document.getElementById('overlayImg').src = 'data:image/png;base64,' + data.overlay;
-                document.getElementById('bandpassImg').src = 'data:image/png;base64,' + data.bandpass;
-                document.getElementById('maskImg').src = 'data:image/png;base64,' + data.mask;
+async function run(){
+  if(!file) return;
 
-                uploadSection.style.display = 'none';
-                results.classList.add('active');
-            } catch (err) {
-                alert('Failed to analyze: ' + err.message);
-            } finally {
-                loading.classList.remove('active');
-            }
-        });
+  zone.style.display='none';
+  fb.classList.remove('on'); gb.classList.remove('on');
+  $('proc').classList.add('on');
 
-        function animateCount(el, target) {
-            const duration = 1200;
-            const start = performance.now();
-            const from = 0;
-            function tick(now) {
-                const elapsed = now - start;
-                const progress = Math.min(elapsed / duration, 1);
-                const eased = 1 - Math.pow(1 - progress, 3);
-                el.textContent = Math.round(from + (target - from) * eased);
-                if (progress < 1) requestAnimationFrame(tick);
-            }
-            requestAnimationFrame(tick);
-        }
+  try{
+    const fd = new FormData();
+    fd.append('image', file);
 
-        resetBtn.addEventListener('click', () => {
-            results.classList.remove('active');
-            uploadSection.style.display = '';
-            preview.classList.remove('active');
-            fileInput.value = '';
-            analyzeBtn.disabled = true;
-            selectedFile = null;
-        });
-    </script>
+    const resp = await fetch('/analyze', { method:'POST', body: fd });
+    const data = await resp.json();
+
+    if(!resp.ok){
+      throw new Error(data.error || ('HTTP ' + resp.status));
+    }
+
+    $('proc').classList.remove('on');
+    show({
+      count: data.count ?? 0,
+      overlay: data.overlay ? ('data:image/png;base64,' + data.overlay) : null,
+      bandpass: data.bandpass ? ('data:image/png;base64,' + data.bandpass) : null,
+      mask: data.mask ? ('data:image/png;base64,' + data.mask) : null,
+    });
+  }catch(err){
+    $('proc').classList.remove('on');
+    alert('Error: ' + err.message);
+    console.error(err);
+    gb.classList.add('on');
+    fb.classList.add('on');
+  }
+}
+
+function show(res){
+  $('uCard').style.display='none';
+
+  const o = $('out');
+  o.classList.add('on');
+  requestAnimationFrame(() => requestAnimationFrame(() => o.classList.add('vis')));
+
+  anim($('num'), res.count);
+
+  // Draw backend images into canvases
+  if(res.overlay) drawToCanvas(res.overlay, $('cOv'));
+  if(res.bandpass) drawToCanvas(res.bandpass, $('cBp'));
+  if(res.mask) drawToCanvas(res.mask, $('cMk'));
+
+  document.querySelectorAll('.tbtn')[0].click();
+}
+
+function anim(el, n){
+  const t0 = performance.now();
+  (function f(now){
+    const p = Math.min((now - t0)/900, 1);
+    el.textContent = Math.round(n * (1 - Math.pow(1 - p, 3)));
+    if(p < 1) requestAnimationFrame(f);
+  })(t0);
+}
+
+function drawToCanvas(src, canvas){
+  const img = new Image();
+  img.onload = () => {
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.style.width = '100%';
+    canvas.style.height = 'auto';
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img, 0, 0);
+  };
+  img.src = src;
+}
+</script>
 </body>
 </html>
