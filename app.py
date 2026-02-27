@@ -12,10 +12,12 @@ import numpy as np
 from scipy import ndimage
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from pathlib import Path
+from flask_cors import CORS
 import uuid
 import os
 import base64
 
+CORS(app, resources={r"/analyze": {"origins": "*"}})
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 RESULTS_DIR = Path("results")
@@ -178,6 +180,7 @@ def analyze():
 @app.route("/results/<filename>")
 def serve_result(filename):
     return send_from_directory(str(RESULTS_DIR), filename)
+
 
 
 if __name__ == "__main__":
