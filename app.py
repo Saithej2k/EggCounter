@@ -185,6 +185,10 @@ def serve_result(filename):
     return send_from_directory(str(RESULTS_DIR), filename)
 
 
+@app.get("/")
+def health():
+    return {"ok": True}
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5000"))
