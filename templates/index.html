@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clownfish Egg Counter</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --deep-ocean: #0a1628;
+            --ocean-mid: #0f2847;
+            --ocean-surface: #183b68;
+            --coral: #ff6b35;
+            --coral-light: #ff8c5a;
+            --coral-glow: rgba(255, 107, 53, 0.15);
+            --foam: #e8f0f8;
+            --white: #ffffff;
+            --sand: #f5e6d0;
+            --text-primary: #e2ecf5;
+            --text-secondary: #8ba4be;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--deep-ocean);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated ocean background */
+        .ocean-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .ocean-bg::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(15, 40, 71, 0.8) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(255, 107, 53, 0.05) 0%, transparent 40%),
+                radial-gradient(ellipse at 60% 80%, rgba(24, 59, 104, 0.6) 0%, transparent 50%);
+            animation: drift 20s ease-in-out infinite alternate;
+        }
+        @keyframes drift {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-2%, 1%) rotate(1deg); }
+        }
+
+        /* Bubbles */
+        .bubble {
+            position: fixed;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.04);
+            z-index: 0;
+            animation: rise linear infinite;
+        }
+        @keyframes rise {
+            0% { transform: translateY(100vh) scale(0.5); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .logo-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--coral), #ff4500);
+            margin-bottom: 24px;
+            font-size: 36px;
+            box-shadow: 0 8px 32px rgba(255, 107, 53, 0.3);
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            color: var(--white);
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            margin-bottom: 12px;
+        }
+        h1 span { color: var(--coral); }
+        .subtitle {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            max-width: 520px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Disclaimer banner */
+        .disclaimer {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-left: 3px solid var(--coral);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 36px;
+            backdrop-filter: blur(10px);
+        }
+        .disclaimer-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--coral-light);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+        }
+        .disclaimer p {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
+        /* Upload area */
+        .upload-section {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 48px;
+            text-align: center;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+            margin-bottom: 40px;
+        }
+        .upload-section:hover {
+            border-color: rgba(255, 107, 53, 0.2);
+            box-shadow: 0 0 60px rgba(255, 107, 53, 0.05);
+        }
+
+        .dropzone {
+            border: 2px dashed rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 48px 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--coral);
+            background: var(--coral-glow);
+        }
+        .dropzone-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            display: block;
+        }
+        .dropzone-text {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .dropzone-hint {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .dropzone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Preview */
+        .preview-container {
+            margin-top: 24px;
+            display: none;
+        }
+        .preview-container.active { display: block; }
+        .preview-img {
+            max-width: 100%;
+            max-height: 280px;
+            border-radius: 12px;
+            object-fit: contain;
+            border: 1px solid var(--glass-border);
+        }
+        .preview-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Analyze button */
+        .btn-analyze {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 24px;
+            padding: 14px 36px;
+            background: linear-gradient(135deg, var(--coral), #e55a2b);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
+        }
+        .btn-analyze:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255, 107, 53, 0.4);
+        }
+        .btn-analyze:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 22, 40, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .loading-overlay.active { display: flex; }
+        .spinner {
+            width: 56px;
+            height: 56px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--coral);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Results */
+        .results-section {
+            display: none;
+            animation: fadeUp 0.6s ease;
+        }
+        .results-section.active { display: block; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .count-hero {
+            text-align: center;
+            padding: 48px 24px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            margin-bottom: 32px;
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+        }
+        .count-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, var(--coral-glow), transparent 60%);
+            pointer-events: none;
+        }
+        .count-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .count-number {
+            font-family: 'DM Serif Display', serif;
+            font-size: clamp(4rem, 10vw, 7rem);
+            color: var(--coral);
+            line-height: 1;
+            position: relative;
+            text-shadow: 0 0 60px rgba(255, 107, 53, 0.3);
+        }
+        .count-suffix {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            position: relative;
+        }
+
+        /* Image results grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+        @media (min-width: 700px) {
+            .results-grid { grid-template-columns: 1fr 1fr; }
+            .results-grid .result-card:first-child { grid-column: 1 / -1; }
+        }
+
+        .result-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s ease;
+        }
+        .result-card:hover { transform: translateY(-2px); }
+        .result-card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .result-card-icon { font-size: 1.2rem; }
+        .result-card-title {
+            font-weight: 600;
+            font-size: 0.92rem;
+        }
+        .result-card-desc {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+        .result-card-body {
+            padding: 16px;
+        }
+        .result-card-body img {
+            width: 100%;
+            border-radius: 8px;
+            display: block;
+        }
+
+        /* Reset button */
+        .btn-reset {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 32px;
+            padding: 12px 28px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-reset:hover {
+            color: var(--text-primary);
+            border-color: rgba(255,255,255,0.2);
+            background: var(--glass);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 24px;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+        }
+        footer a { color: var(--coral-light); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Method section */
+        .method-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            margin-top: 16px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.2s;
+        }
+        .method-toggle:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+        .method-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+        .method-content.open { max-height: 600px; }
+        .method-inner {
+            padding: 20px;
+            margin-top: 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.65;
+        }
+        .method-inner strong { color: var(--text-primary); font-weight: 600; }
+        .step-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 12px;
+        }
+        .step-list li {
+            padding: 6px 0 6px 28px;
+            position: relative;
+        }
+        .step-list li::before {
+            content: attr(data-step);
+            position: absolute;
+            left: 0;
+            top: 6px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--coral-glow);
+            color: var(--coral);
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,107,53,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="ocean-bg"></div>
+
+    <!-- Bubbles -->
+    <script>
+        for (let i = 0; i < 12; i++) {
+            const b = document.createElement('div');
+            b.className = 'bubble';
+            const size = 20 + Math.random() * 60;
+            b.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*10}s;`;
+            document.body.appendChild(b);
+        }
+    </script>
+
+    <div class="container">
+        <header>
+            <div class="logo-icon">🐟</div>
+            <h1>Clownfish <span>Egg</span> Counter</h1>
+            <p class="subtitle">Upload a photo of clownfish eggs and get an automated count using computer vision</p>
+        </header>
+
+        <div class="disclaimer">
+            <div class="disclaimer-title">⚠️ Accuracy Notice</div>
+            <p>This tool uses classical computer vision (bandpass filtering + local maxima detection) — <strong>not</strong> a trained CNN or deep learning model. Results are estimates from a single image and may have errors, especially in very dense clusters or poor lighting. For research purposes, always verify counts manually.</p>
+        </div>
+
+        <!-- Upload -->
+        <div class="upload-section" id="uploadSection">
+            <div class="dropzone" id="dropzone">
+                <span class="dropzone-icon">📷</span>
+                <div class="dropzone-text">Drop your egg image here</div>
+                <div class="dropzone-hint">or click to browse · JPG, PNG up to 16MB</div>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+            <div class="preview-container" id="preview">
+                <img class="preview-img" id="previewImg" alt="Preview">
+                <div class="preview-name" id="previewName"></div>
+            </div>
+            <button class="btn-analyze" id="analyzeBtn" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Count Eggs
+            </button>
+
+            <br>
+            <button class="method-toggle" onclick="document.getElementById('methodContent').classList.toggle('open'); this.querySelector('.arrow').textContent = document.getElementById('methodContent').classList.contains('open') ? '▲' : '▼'">
+                How does it work? <span class="arrow">▼</span>
+            </button>
+            <div class="method-content" id="methodContent">
+                <div class="method-inner">
+                    <strong>Pipeline overview:</strong>
+                    <ul class="step-list">
+                        <li data-step="1"><strong>Color filter</strong> — HSV thresholding isolates orange egg pixels from the background</li>
+                        <li data-step="2"><strong>Bandpass filter</strong> — Subtracts a wide Gaussian blur from a narrow one on the LAB A-channel, highlighting egg-sized features even in dense clusters</li>
+                        <li data-step="3"><strong>Peak detection</strong> — Non-maximum suppression finds one intensity peak per egg center</li>
+                        <li data-step="4"><strong>Validation</strong> — Each detection is verified for saturation and color to reject false positives on tile gaps</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading-overlay" id="loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Analyzing eggs...</div>
+        </div>
+
+        <!-- Results -->
+        <div class="results-section" id="results">
+            <div class="count-hero">
+                <div class="count-label">Estimated Egg Count</div>
+                <div class="count-number" id="eggCount">0</div>
+                <div class="count-suffix">eggs detected</div>
+            </div>
+
+            <div class="results-grid">
+                <div class="result-card">
+                    <div class="result-card-header">
+                        <span class="result-card-icon">🎯</span>
+                        <div>
+                            <div class="result-card-title">Detection Overlay</div>
+                            <div class="result-card-desc">Green dots mark each detected egg center</div>
+                        </div>
+                    </div>
+                    <div class="result-card-body">
+                        <img id="overlayImg" alt="Detection overlay">
+                    </div>
+                </div>
+                <div class="result-card">
+                    <div class="result-card-header">
+                        <span class="result-card-icon">📊</span>
+                        <div>
+                            <div class="result-card-title">Bandpass Filter</div>
+                            <div class="result-card-desc">Egg-sized features isolated from background</div>
+                        </div>
+                    </div>
+                    <div class="result-card-body">
+                        <img id="bandpassImg" alt="Bandpass filter">
+                    </div>
+                </div>
+                <div class="result-card">
+                    <div class="result-card-header">
+                        <span class="result-card-icon">🎨</span>
+                        <div>
+                            <div class="result-card-title">Orange Mask</div>
+                            <div class="result-card-desc">HSV color segmentation of egg pixels</div>
+                        </div>
+                    </div>
+                    <div class="result-card-body">
+                        <img id="maskImg" alt="Orange mask">
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align:center">
+                <button class="btn-reset" id="resetBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    Analyze Another Image
+                </button>
+            </div>
+        </div>
+
+        <footer>
+            Built with OpenCV + scipy · Classical CV, no deep learning<br>
+            <a href="https://github.com" target="_blank">View source</a> · For educational and research use
+        </footer>
+    </div>
+
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const previewImg = document.getElementById('previewImg');
+        const previewName = document.getElementById('previewName');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const uploadSection = document.getElementById('uploadSection');
+        const results = document.getElementById('results');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let selectedFile = null;
+
+        // Drag & drop
+        dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+
+        fileInput.addEventListener('change', e => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) return;
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = e => {
+                previewImg.src = e.target.result;
+                previewName.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
+                preview.classList.add('active');
+                analyzeBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            loading.classList.add('active');
+
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+
+            try {
+                const res = await fetch('/analyze', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                // Animate count
+                const countEl = document.getElementById('eggCount');
+                animateCount(countEl, data.count);
+
+                // Set images
+                document.getElementById('overlayImg').src = 'data:image/png;base64,' + data.overlay;
+                document.getElementById('bandpassImg').src = 'data:image/png;base64,' + data.bandpass;
+                document.getElementById('maskImg').src = 'data:image/png;base64,' + data.mask;
+
+                uploadSection.style.display = 'none';
+                results.classList.add('active');
+            } catch (err) {
+                alert('Failed to analyze: ' + err.message);
+            } finally {
+                loading.classList.remove('active');
+            }
+        });
+
+        function animateCount(el, target) {
+            const duration = 1200;
+            const start = performance.now();
+            const from = 0;
+            function tick(now) {
+                const elapsed = now - start;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(from + (target - from) * eased);
+                if (progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        }
+
+        resetBtn.addEventListener('click', () => {
+            results.classList.remove('active');
+            uploadSection.style.display = '';
+            preview.classList.remove('active');
+            fileInput.value = '';
+            analyzeBtn.disabled = true;
+            selectedFile = null;
+        });
+    </script>
+</body>
+</html>
